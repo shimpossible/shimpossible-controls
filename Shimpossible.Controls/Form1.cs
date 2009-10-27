@@ -15,5 +15,19 @@ namespace Shimpossible.Controls
         {
             InitializeComponent();
         }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+
+            this.circularGuage1.Value+=0.3;
+
+            if (this.circularGuage1.Value > 100)
+            {
+                this.circularGuage1.Value = 0;
+                this.circularGuage1.SweepAngle -= 10;
+                if (this.circularGuage1.SweepAngle < 90)
+                    this.circularGuage1.SweepAngle = 270;
+            }
+        }
     }
 }

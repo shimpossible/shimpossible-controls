@@ -28,8 +28,10 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.button1 = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.circularGuage1 = new Shimpossible.Controls.Guage.CircularGuage();
             this.SuspendLayout();
             // 
@@ -52,12 +54,22 @@
             this.label1.TabIndex = 2;
             this.label1.Text = "label1";
             // 
+            // timer1
+            // 
+            this.timer1.Enabled = true;
+            this.timer1.Interval = 10;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
             // circularGuage1
             // 
-            this.circularGuage1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.circularGuage1.BackColor = System.Drawing.SystemColors.ControlDark;
             this.circularGuage1.Location = new System.Drawing.Point(35, 110);
+            this.circularGuage1.Max = 100;
+            this.circularGuage1.Min = 0;
             this.circularGuage1.Name = "circularGuage1";
             this.circularGuage1.Size = new System.Drawing.Size(352, 287);
+            this.circularGuage1.StartAngle = 135F;
+            this.circularGuage1.SweepAngle = 270F;
             this.circularGuage1.TabIndex = 0;
             this.circularGuage1.Text = "circularGuage1";
             this.circularGuage1.Value = 0;
@@ -83,6 +95,7 @@
         private Shimpossible.Controls.Guage.CircularGuage circularGuage1;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 
