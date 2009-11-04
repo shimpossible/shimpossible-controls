@@ -15,5 +15,10 @@ namespace Shimpossible.Controls
         {
             InitializeComponent();
         }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            this.led1.Value = !this.led1.Value;
+        }
     }
 }
