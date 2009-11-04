@@ -20,5 +20,21 @@ namespace Shimpossible.Controls
         {
             this.led1.Value = !this.led1.Value;
         }
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            
+            this.circularGuage1.Value+=0.3;
+
+            if (this.circularGuage1.Value > this.circularGuage1.Max)
+                this.circularGuage1.Value = this.circularGuage1.Min;
+
+            //if (this.circularGuage1.Value > 100)
+            {
+                //this.circularGuage1.Value = 0;
+                this.circularGuage1.SweepAngle -= 1;
+                if (this.circularGuage1.SweepAngle < 90)
+                    this.circularGuage1.SweepAngle = 270;
+            }
+        }
     }
 }

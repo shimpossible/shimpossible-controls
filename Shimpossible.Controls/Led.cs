@@ -18,6 +18,7 @@ namespace Shimpossible.Controls
 
         public LED() : base()
         {
+            ForeColor = Color.Lime;
             offColor = ControlPaint.Dark(ForeColor);
             this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
         }

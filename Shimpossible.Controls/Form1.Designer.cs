@@ -28,21 +28,13 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.circularGuage1 = new Shimpossible.Controls.Guage.CircularGuage();
+            this.components = new System.ComponentModel.Container();
             this.button1 = new System.Windows.Forms.Button();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.led1 = new Shimpossible.Controls.LED();
+            this.circularGuage1 = new Shimpossible.Controls.Guage.CircularGuage();
             this.SuspendLayout();
-            // 
-            // circularGuage1
-            // 
-            this.circularGuage1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
-            this.circularGuage1.Location = new System.Drawing.Point(12, 12);
-            this.circularGuage1.Name = "circularGuage1";
-            this.circularGuage1.Size = new System.Drawing.Size(271, 229);
-            this.circularGuage1.TabIndex = 0;
-            this.circularGuage1.Text = "circularGuage1";
-            this.circularGuage1.Value = 0;
             // 
             // button1
             // 
@@ -64,22 +56,41 @@
             this.checkBox1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBox1.UseVisualStyleBackColor = true;
             // 
+            // timer1
+            // 
+            this.timer1.Enabled = true;
+            this.timer1.Interval = 10;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
             // led1
             // 
-            this.led1.ForeColor = System.Drawing.Color.Lime;
-            this.led1.Location = new System.Drawing.Point(289, 12);
+            this.led1.Location = new System.Drawing.Point(394, 247);
             this.led1.Name = "led1";
-            this.led1.Size = new System.Drawing.Size(200, 200);
+            this.led1.Size = new System.Drawing.Size(128, 128);
             this.led1.TabIndex = 6;
             this.led1.Text = "led1";
-            this.led1.Value = true;
+            // 
+            // circularGuage1
+            // 
+            this.circularGuage1.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.circularGuage1.Location = new System.Drawing.Point(12, 12);
+            this.circularGuage1.Max = 100;
+            this.circularGuage1.Min = 0;
+            this.circularGuage1.Name = "circularGuage1";
+            this.circularGuage1.Radius = 84F;
+            this.circularGuage1.Size = new System.Drawing.Size(255, 229);
+            this.circularGuage1.StartAngle = 135F;
+            this.circularGuage1.SweepAngle = 270F;
+            this.circularGuage1.TabIndex = 0;
+            this.circularGuage1.Text = "circularGuage1";
+            this.circularGuage1.Value = 0;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
-            this.ClientSize = new System.Drawing.Size(953, 548);
+            this.ClientSize = new System.Drawing.Size(556, 417);
             this.Controls.Add(this.led1);
             this.Controls.Add(this.checkBox1);
             this.Controls.Add(this.button1);
@@ -96,6 +107,7 @@
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.CheckBox checkBox1;
         private LED led1;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 

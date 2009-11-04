@@ -9,15 +9,110 @@ namespace Shimpossible.Controls.Guage
 {    
     public class CircularGuage : Control
     {
-        double value;
+        double value=0;
+        double min = 0, max = 100, range=100;
+        float centerX, centerY;
+        float radius = 100;
+
+        float startAngle = 135, sweepAngle = 270;
+
+        CircularPointer pointer;    // shows angle
+        CircularAxis axis;          // draw ticks and circle
 
         public CircularGuage()
         {
-            //SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             SetStyle(ControlStyles.AllPaintingInWmPaint, true);
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             SetStyle(ControlStyles.Opaque, true);
-            this.BackColor = Color.Transparent;
+
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(centerX-radius, centerY-radius, centerX+radius, centerY+radius, 0, 360);
+            //this.Region = new Region(path);
+
+            pointer = new CircularPointer(radius);            
+            axis = new CircularAxis(radius);
+            axis.Font = this.Font;
+            axis.Align = AxisAlign.Inside;
+
+            this.BackColor = SystemColors.ControlDark;
+        }
+
+        public CircularAxis Axis
+        {
+            get { return axis; }
+            set
+            {
+                axis = value;
+                // sync up the values
+                axis.Font = this.Font;
+                axis.Max = this.Max;
+                axis.Min = this.Min;
+                axis.Radius = this.Radius;
+            }
+        }
+        public float StartAngle
+        {
+            get { return startAngle; }
+            set { startAngle = value;
+            axis.StartAngle = value;
+            }
+        }
+        public float SweepAngle
+        {
+            get { return sweepAngle; }
+            set { 
+                sweepAngle = value;
+                axis.SweepAngle = value;
+            }
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            centerX = this.Width / 2;
+            centerY = this.Height / 2;
+            // for testing we use this value
+            this.Radius = Math.Min(centerX, centerY) - 30;
+
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(centerX - radius, centerY - radius, radius*2, radius*2, 0, 360);
+            //this.Region = new Region(path);
+
+            this.Invalidate();
+        }
+
+        public float Radius
+        {
+            get { return radius; }
+            set
+            {
+                radius = value;
+                pointer.Radius = axis.Radius = this.Radius;
+            }
+        }
+        public double Min
+        {
+            get { return min; }
+            set { min = value;
+            axis.Min = value;
+            range = max - min;
+            }
+        }
+
+        public double Max
+        {
+            get { return max; }
+            set { max = value;
+            axis.Max = value;
+            range = max - min;
+            }
+        }
+
+        private float CalcAngle(double value)
+        {
+            return (float)(value * sweepAngle / range) + startAngle;
         }
 
         public double Value
@@ -25,59 +120,49 @@ namespace Shimpossible.Controls.Guage
             get { return value; }
             set 
             { 
-                this.value = value;
-                //this.Invalidate();
-                if(Parent!=null)
-                Parent.Invalidate(this.Bounds, true);
+                this.value = value;                
+                this.Refresh();
             }
-        }
-        protected override CreateParams CreateParams
+        }        
+
+        
+        public override Font Font
         {
             get
             {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x20;
-                return cp;
+                return base.Font;
+            }
+            set
+            {
+                base.Font = value;
+                axis.Font = value;
             }
         }
+        
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (value > 30) value = 0;
-            double max = 30;
-            double min = 0;
-            double delta = max - min;
-
-            float centerX = this.Width / 2;
-            float centerY = this.Height / 2;
-            float radius = Math.Min(centerX, centerY)-30;
-            float startAngle = 135;
-            float sweepAngle = 270;
-            int ticks = 15;
-            float step = sweepAngle / ticks;
-            float currAngle = startAngle;
-            Graphics g = e.Graphics;
+            Graphics g = e.Graphics;            
             g.SmoothingMode = SmoothingMode.HighQuality;
-            
+            g.CompositingQuality = CompositingQuality.HighQuality;
 
             // Clear the background color
-            SolidBrush b = new SolidBrush(Color.FromArgb(64, Color.Gray));
+            SolidBrush b = new SolidBrush(this.BackColor);
             g.FillRectangle(b, new Rectangle(Point.Empty, this.Size));
-
-
+            
             // translate to the CENTER
             g.TranslateTransform(centerX, centerY);
             Matrix centerMatrix = g.Transform;
-            CircularAxis axis = new CircularAxis(radius);
-            axis.OnPaint(e);
+            
+            // draw axis and tick marks
+            axis.OnPaint(g);
             // restore
             g.Transform = centerMatrix;
 
-            // draw the pointer
-            CircularPointer pointer = new CircularPointer(radius);
-            pointer.Paint(g, value);
+            // draw the pointer/needle            
+            pointer.Paint(g, CalcAngle(value) );
 
-            base.OnPaint(e);
+            //base.OnPaint(e);
         }
     }
 
@@ -86,24 +171,46 @@ namespace Shimpossible.Controls.Guage
     /// </summary>
     public class CircularPointer
     {
-        float sweepAngle = 270;
-        float startAngle = 135;
-        double min=0, max=30;
+        int shadowOffset = 5;
         float radius = 90;
-        int width=10;
-
+        int width=10;   // width of needle        
         int capWidth = 30;
 
         public CircularPointer(float r)
         {
             radius = r;
         }
-        public void Paint(Graphics g, double value)
+        
+        public float Radius
         {
-            double valueRange = (max - min);
-            
-            GraphicsState state = g.Save();
-            float vAngle = (float)(value * sweepAngle / valueRange);
+            get { return radius; }
+            set { radius = value; }
+        }
+
+        /// <summary>
+        /// Pixel offset for shadow
+        /// set to 0 to disable shadow
+        /// </summary>
+        public int ShadowOffset
+        {
+            get { return shadowOffset; }
+            set { shadowOffset = value; }
+        }
+        /// <summary>
+        /// Radius of Pointer Cap
+        /// </summary>
+        public int CapRadius
+        {
+            get { return capWidth; }
+            set { capWidth = value; }
+        }
+
+        public void Paint(Graphics g, float angle)
+        {
+            Matrix centerMatrix = g.Transform;
+
+            //double valueRange = (max - min);
+            //float vAngle = (float)(value * sweepAngle / valueRange);
 
             Brush shadow = new SolidBrush(Color.FromArgb(50, Color.Black));
             Brush capBrush =
@@ -113,13 +220,10 @@ namespace Shimpossible.Controls.Guage
 
             Brush brush =
                 new LinearGradientBrush(new PointF(0, width), new PointF(0, -width), Color.White, Color.Red);
-            GraphicsPath path = new GraphicsPath();
+            GraphicsPath path = PredefinedShapes.Needle(width, (int)radius);
             GraphicsPath capPath = new GraphicsPath();
             
-            path.AddLine(0, width, radius, 0);
-            path.AddLine(radius, 0, 0, -width);
-            path.AddLine(0, -width, 0, width);
-
+            
             capPath.AddArc(capWidth * -0.5f, capWidth * -0.5f, capWidth, capWidth, 0, 360);
             Region needleRegion = new Region(path);
             needleRegion.Union(capPath);
@@ -128,18 +232,18 @@ namespace Shimpossible.Controls.Guage
             // shadow
             Matrix old = g.Transform;
             // shadow offset
-            g.TranslateTransform(2, 2);
-            g.RotateTransform(startAngle + vAngle);
+            g.TranslateTransform(shadowOffset, shadowOffset);
+            g.RotateTransform(angle);
             g.FillRegion(shadow, needleRegion);
             // restore matrix
             g.Transform = old;
 
-            g.RotateTransform(startAngle + vAngle);
+            g.RotateTransform(angle);
             // draw needle
             g.FillPath(brush, path);            
             g.DrawPath(Pens.Black, path);
 
-            g.Restore(state);
+            g.Transform = centerMatrix;
             // draw cap
             g.FillPath(capBrush, capPath);
             g.DrawPath(Pens.Black, capPath);
@@ -156,7 +260,52 @@ namespace Shimpossible.Controls.Guage
         AxisAlign align = AxisAlign.Inside;        
         double min = 0, max = 30;
         float radius = 100;
+        Color color = Color.White;
+        // shape to draw tick mark
+        GraphicsPath tickPath;
+        LinearGradientBrush tickBrush;
 
+        public CircularTicks()
+        {
+            BuildTickPath();
+        }
+
+        public AxisAlign Align
+        {
+            get
+            {
+                return align;
+            }
+            set
+            {
+                align = value;
+            }
+        }
+        public float StartAngle
+        {
+            get { return startAngle; }
+            set
+            {
+                startAngle = value;
+            }
+        }
+        public float SweepAngle
+        {
+            get { return sweepAngle; }
+            set
+            {
+                sweepAngle = value;
+            }
+        }
+
+        protected void BuildTickPath()
+        {
+            tickBrush = new LinearGradientBrush(Point.Empty, new Point(0, width),
+                color, Color.FromArgb( color.R/2, color.G/2, color.B/2) );
+            tickBrush.SetSigmaBellShape(.5f, 1);
+
+            tickPath = PredefinedShapes.Rectangle(width, height);
+        }
         public float Radius
         {
             set { radius = value; }
@@ -164,12 +313,20 @@ namespace Shimpossible.Controls.Guage
         public int Height
         {
             get { return height; }
-            set { height = value; }
+            set 
+            { 
+                height = value;
+                BuildTickPath();
+            }
         }
         public int Width
         {
             get { return width; }
-            set { width = value; }
+            set 
+            { 
+                width = value;
+                BuildTickPath();
+            }
         }
         public int Ticks
         {
@@ -180,19 +337,21 @@ namespace Shimpossible.Controls.Guage
         public void Paint(Graphics g)
         {
             double tickValueScale = (max - min) / ticks;
-            double angleScale = sweepAngle / ticks;
-
-            LinearGradientBrush tickBrush = new LinearGradientBrush(Point.Empty, new Point(0, width),
-                Color.White, Color.LightGray);
-            tickBrush.SetSigmaBellShape(.5f, 1);
-
-            GraphicsPath tickPath = new GraphicsPath();
-            tickPath.AddLine(width * .5f, height * -.5f, width * .5f, height * .5f);
-            tickPath.AddLine(width * .5f, height * .5f, width * -.5f, height * .2f);
-            tickPath.AddLine(width * -.5f, height * .2f, width * -.5f, height * -.2f);
-            tickPath.AddLine(width * -.5f, height * -.2f, width * .5f, height * -.5f);
+            double angleScale = sweepAngle / ticks;            
 
             Matrix startM = g.Transform;
+
+            float actualRad = radius;
+            switch (align)
+            {
+                case AxisAlign.Inside:
+                    actualRad = radius - Width/2;
+                    break;
+                case AxisAlign.Outside:
+                    actualRad = radius + Width/2;
+                    break;                
+            }
+
             for (int i = 0; i <= ticks; i++)
             {
                 float currAngle = (float)(i * angleScale + this.startAngle);
@@ -202,12 +361,12 @@ namespace Shimpossible.Controls.Guage
 
                 // move to position
                 g.RotateTransform(currAngle);
-                g.TranslateTransform(radius, 0);
+                g.TranslateTransform(actualRad, 0);
 
 
                 // draw major tick mark                
                 g.FillPath(tickBrush, tickPath);
-                g.DrawPath(new Pen(Color.FromArgb(128, 128, 128)), tickPath);
+                g.DrawPath(new Pen(Color.FromArgb(128, 128, 128)), tickPath);   // outline tick
             }
         }
     }
@@ -227,8 +386,9 @@ namespace Shimpossible.Controls.Guage
         Font font = new Font("Arial", 12, FontStyle.Bold);
         AxisAlign textAlign = AxisAlign.Inside;
 
+        bool dirty = true;
         bool rotateText = false;
-
+        Bitmap imageCache;
         
         CircularTicks major = new CircularTicks();
         CircularTicks minor = new CircularTicks();
@@ -242,23 +402,163 @@ namespace Shimpossible.Controls.Guage
             minor.Ticks = 50;
             minor.Width = 7;
             minor.Height = 5;
-            
+
+
         }
-        public void OnPaint(PaintEventArgs e)
+
+        public float StartAngle
+        {
+            get { return startAngle; }
+            set { startAngle = value;
+                
+            dirty = true;
+            }
+        }
+        public float SweepAngle
+        {
+            get { return sweepAngle; }
+            set { 
+                sweepAngle = value;
+                major.SweepAngle = value;
+                minor.SweepAngle = value;
+            dirty = true;
+            }
+        }
+
+
+        public double Max
+        {
+            get { return max; }
+            set { max = value; }
+        }
+        public double Min
+        {
+            get { return min; }
+            set { min = value; }
+        }
+
+        /// <summary>
+        /// Where to draw the text
+        /// </summary>
+        public AxisAlign Align
+        {
+            get { return textAlign; }
+            set { 
+                textAlign = value;
+                dirty = true;
+            }
+        }
+
+        public float Radius
+        {
+            get {
+                return radius;
+            }
+            set
+            {
+                minor.Radius = major.Radius = radius = value;
+                dirty = true;
+            }
+        }
+
+        /// <summary>
+        /// How many major ticks to show.
+        /// This is where text values show also
+        /// </summary>
+        public int MajorTicks
+        {
+            get { return major.Ticks; }
+            set { 
+                major.Ticks = value;
+                dirty = true;
+            }
+
+        }
+
+        /// <summary>
+        /// How many minor ticks to display between each major
+        /// </summary>
+        public int MinorTicks
+        {
+            get { return minor.Ticks / major.Ticks; }
+            set
+            {
+                minor.Ticks = major.Ticks * value;
+                dirty = true;
+            }
+        }
+
+        public Color AxisColor
+        {
+            get { return color; }
+            set { 
+                color = value;
+                dirty = true;
+            }
+
+        }
+        /// <summary>
+        /// Rotate text so it always points out from center
+        /// Text always points up if this is false
+        /// </summary>
+        public bool RotateText
+        {
+            get { return rotateText; }
+            set { 
+                rotateText = value;
+                dirty = true;
+            }
+
+        }
+
+        public Font Font
+        {
+            get { return font; }
+            set
+            {
+                font = value;
+                dirty = true;
+            }
+        }
+        public void OnPaint(Graphics grfx)
+        {
+            if (dirty)
+            {
+                imageCache = new Bitmap((int)(radius * 2) + major.Width, (int)(radius * 2) + major.Width, grfx);
+                using (Graphics g = Graphics.FromImage(imageCache))
+                {
+                    // dont set cleartype or fonts look messed up.. 
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                    g.SmoothingMode = SmoothingMode.HighQuality;
+                    g.TranslateTransform(imageCache.Width * 0.5f, imageCache.Height * 0.5f);
+                    BuildImage(g);
+                }                
+            }
+
+            // draw the cached image
+            grfx.DrawImage(imageCache, imageCache.Width * -0.5f, imageCache.Height * -0.5f);
+        }
+
+        /// <summary>
+        /// Draws the Axis/scale to the selected Graphics object
+        /// This is meant to cache the image to a bitmap
+        /// for quicker display later
+        /// </summary>
+        /// <param name="g"></param>
+        public void BuildImage(Graphics g)
         {
             double tickValueScale = (max - min) / ticks;
             double angleScale = sweepAngle / ticks;
             double textRadius = radius; // radius where text will show
-            Graphics  g=e.Graphics;
 
             Pen p = new Pen(color, width);
-            g.DrawArc(p, new RectangleF(- radius, - radius, 2*radius, 2*radius), startAngle, sweepAngle);
+            g.DrawArc(p, new RectangleF(-radius, -radius, 2*radius, 2*radius), startAngle, sweepAngle);
 
 
             Matrix pre = g.Transform;
-            minor.Paint(e.Graphics);
+            minor.Paint(g);
             g.Transform = pre;
-            major.Paint(e.Graphics);
+            major.Paint(g);
             g.Transform = pre;
 
             Brush textBrush = new SolidBrush(Color.White);
@@ -290,18 +590,26 @@ namespace Shimpossible.Controls.Guage
                 g.RotateTransform(currAngle);
                 g.TranslateTransform(radius,0);
 
-
+                float shift = 0;
                 // outside
                 switch (textAlign)
                 {
+                    case AxisAlign.Cross:
+                        shift = 0;
+                        break;
                     case AxisAlign.Outside:
-                        g.TranslateTransform(+Math.Max(textSize.Width / 2, textSize.Height / 2), 0);
+                        shift = Math.Max(textSize.Width / 2, textSize.Height / 2);
+                        if (major.Align == AxisAlign.Cross)     shift += major.Width / 2;                        
+                        if (major.Align == AxisAlign.Outside)   shift += major.Width;                        
                         break;
                     case AxisAlign.Inside:
-                        g.TranslateTransform(-Math.Max(textSize.Width / 2, textSize.Height / 2) - major.Height/2, 0);
+                        shift = -Math.Max(textSize.Width / 2, textSize.Height / 2);
+                        if (major.Align == AxisAlign.Cross) shift -= major.Width / 2;
+                        if (major.Align == AxisAlign.Inside) shift -= major.Width;
                         break;
-                    // default is cross
                 }
+
+                g.TranslateTransform(shift, 0);
 
                 if (rotateText == false)
                 {
@@ -313,7 +621,11 @@ namespace Shimpossible.Controls.Guage
                 g.DrawString(tickText, font, textBrush, new PointF(-textSize.Width / 2,  -textSize.Height / 2));
 
             }
+
+            dirty = false;
         }
+
+        
     }
 
 
